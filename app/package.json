@@ -1,0 +1,21 @@
+{
+  "name": "regionale-wetterunterschiede",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "elm make src/Main.elm --output=public/elm.js",
+    "format": "elm-format src --yes",
+    "format:check": "elm-format src --validate",
+    "dev": "node scripts/server.mjs",
+    "test:browser": "node scripts/check-browser.mjs",
+    "test:year": "node scripts/check-year.mjs",
+    "test:profiles": "node scripts/check-profiles.mjs",
+    "test:comparison": "node scripts/check-comparison.mjs",
+    "test:usecases": "node scripts/check-usecases.mjs"
+  },
+  "devDependencies": {
+    "elm": "0.19.1-6",
+    "elm-format": "0.8.8",
+    "playwright": "^1.56.0"
+  }
+}

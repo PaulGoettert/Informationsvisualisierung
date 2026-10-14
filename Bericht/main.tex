@@ -1,0 +1,1260 @@
+\documentclass[usegeometry=true]{scrartcl}
+\usepackage[ngerman]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[utf8]{inputenc}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm,bindingoffset=1cm,includeheadfoot]{geometry}
+\usepackage[onehalfspacing]{setspace}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=numeric]{biblatex}
+\addbibresource{../literature.bib}
+\setlength{\emergencystretch}{2em}
+\newcommand{\offen}[1]{\par\noindent\textit{Noch auszuarbeiten: #1}\par}
+\subject{Projektmodul Informationsvisualisierung, Sommersemester 2026}
+\title{Informationsvisualisierung\\\large Regionale Wetterunterschiede}
+\author{Paul Göttert \and Pit Sorgalla}
+\date{10. Oktober 2026}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Einleitung}
+Für einen Stationsvergleich müssen Wetterinteressierte drei Informationen
+zusammenführen: den Zeitpunkt eines Unterschieds, die zugehörigen
+Wettergrößen und den Verlauf innerhalb eines Tages. Eine einzelne
+Messwerttabelle bietet genaue Zahlen, erfordert dafür aber den wiederholten
+Wechsel zwischen Stationen, Zeitpunkten und Größen. Das Zielproblem dieser
+Arbeit ist, diese Suche und Zuordnung in einer gemeinsamen Anwendung zu
+unterstützen. Drei Fragen leiten den Entwurf: Wie unterscheiden sich
+gleichzeitige Temperaturverläufe? Welche Tagesprofile erfüllen mehrere
+Wetterbedingungen? Wann kehrt sich die Richtung eines Stationsunterschieds
+um? Die Antworten werden an beobachteten Daten von 2024 untersucht.
+\subsection{Anwendungshintergrund}
+Beim rückblickenden Wettervergleich sind drei Ebenen zu unterscheiden:
+ein Messwert zu einer Uhrzeit, die Zusammenfassung eines Tages und die
+Einordnung im Jahr. Wer zwei Orte vergleichen möchte, muss dieselben
+Zeitpunkte und vergleichbare Messabdeckung betrachten. Wer Tage mit
+mehreren Bedingungen sucht, muss dagegen die Bedingungen auf denselben
+Stations-/Tag beziehen. Ein hohes Tageswindmittel ist beispielsweise
+keine Aussage über eine einzelne Böe; eine Niederschlagssumme beschreibt
+eine Menge und keinen Temperaturverlauf.
+
+Die DWD-Daten auf dem Universitätsserver ermöglichen diese rückblickenden
+Fragen für das abgeschlossene Jahr 2024. Die zentrale Frage lautet,
+wie sich die Bedingungen ausgewählter Stationen unterscheiden und welche
+Tage eine Detailprüfung rechtfertigen. Unterschiedliche Stationslagen
+liefern Vergleichskontexte (Tabelle~\ref{tab:stations}); ihre Auswahl
+begründet jedoch keine Ursache beobachteter Unterschiede.
+Der feste Jahresumfang begrenzt den Entwurf und erlaubt die vollständige
+Prüfung von Tageszuordnung und Messabdeckung.
+
+\subsection{Zielgruppen}
+Die Anwendung richtet sich an Wetterinteressierte, die beobachtete
+Daten selbst untersuchen möchten, ohne meteorologische Spezialkenntnisse
+vorauszusetzen. Zwei Informationsbedürfnisse strukturieren den Entwurf.
+Beim Ortsvergleich werden Richtung, Größe und Verlauf eines Unterschieds
+gesucht: gemeinsame Zeitachsen, Stationsfarben und genaue Tageswerte
+unterstützen diese Aufgabe. Bei der Suche nach Wetterepisoden werden
+mehrere Bedingungen verknüpft und anschließend die zugehörigen Tage
+geprüft: Profilintervalle, Trefferzahl und Datumsauswahl unterstützen dies.
+Der Jahresüberblick verbindet beide Bedürfnisse mit der zeitlichen
+Einordnung auffälliger Tage.
+
+Vorausgesetzt werden das Lesen von Datum und Temperaturkurven sowie
+ein Grundverständnis der Einheiten °C, Prozent, m/s und mm. Erklärt werden
+müssen die verschiedenen Tageskennzahlen, die UND-Verknüpfung der
+Profilfilter und die rekursive Leserichtung. Diese Erklärungen stehen
+neben den jeweiligen Ansichten; die Lesehilfe zeigt zusätzlich die
+Blockfolge. Eine Suche erleichtert den Zugang zu einem bekannten Datum.
+Erforderlich sind ein Browser und der Veranstaltungszugang.
+Diese Bedürfnisse sind Entwurfsannahmen, keine erhobenen Nutzerbefunde.
+Das System beantwortet rückblickende Vergleichsfragen; Vorhersagen,
+Sicherheitsentscheidungen und langfristige Klimatrends werden damit
+nicht begründet.
+
+\subsection{Überblick und Beiträge}
+Der Bericht untersucht vier Stationen und 366 Tage des Jahres 2024
+mit Temperatur, Feuchtigkeit, Wind und Niederschlag. Drei Beiträge
+werden in den folgenden Kapiteln belegt. Erstens verbindet die Anwendung
+Jahresorientierung durch Recursive Pattern, mehrdimensionale Profilauswahl
+durch parallele Koordinaten und zeitliche Details durch Linien; die
+Anwendungsfälle zeigen den Wechsel zwischen diesen Aufgaben.
+Zweitens trennt die Elm-Vorverarbeitung Momentanwerte und Intervalle
+und prüft vor Tageskennzahlen die Messabdeckung (Abschnitt~2).
+Drittens verbindet der Differenzmodus das Vorzeichen eines geordneten
+Stationsvergleichs mit nachgewiesener gemeinsamer Abdeckung und den
+zugehörigen Tagesdetails (Abschnitt~5.3).
+Die Arbeit kombiniert und untersucht bekannte Techniken für diesen
+Wetterdatensatz.
+
+\section{Daten}
+Der Untersuchungszeitraum ist das Schaltjahr 2024 mit 366 Tagen.
+Ausgewählt wurden Wittenberg (Stations-ID 5629), Leipzig/Halle (2932),
+Brocken (722) und Hamburg-Fuhlsbuettel (1975). Die Auswahl stellt zwei ähnlich hoch gelegenen Stationen in
+Mitteldeutschland eine deutlich höher gelegene und eine nördlichere,
+niedrig gelegene Station gegenüber. Die DWD-Stationsliste liefert dafür
+die Lage- und Höhenangaben in Tabelle~\ref{tab:stations}
+\autocite{dwd2026stations}. So lassen sich Verläufe zunächst zwischen
+Wittenberg und Leipzig/Halle vergleichen und anschließend mit Brocken
+und Hamburg kontrastieren. Die Lagemerkmale motivieren die Auswahl,
+isolieren aber weder den Höheneffekt noch andere Standortfaktoren.
+Zusätzlich entscheidend sind die vier gemeinsam verfügbaren Wettergrößen
+und die zuvor geprüfte hohe Jahresabdeckung. Die Auswahl dient
+vergleichbaren Analyseaufgaben und ist keine Stichprobe Deutschlands.
+\begin{table}[htbp]
+  \centering\small
+  \begin{tabular}{lrrr}
+    Station & Breite (°N) & Länge (°E) & Höhe (m) \\
+    \hline
+    Wittenberg & 51,8891 & 12,6446 & 105 \\
+    Leipzig/Halle & 51,4347 & 12,2396 & 131 \\
+    Brocken & 51,7986 & 10,6183 & 1135 \\
+    Hamburg-Fuhlsbüttel & 53,6332 & 9,9881 & 11 \\
+  \end{tabular}
+  \caption{Lagekontext aus der DWD-Stationsliste, abgerufen am
+  4. Oktober 2026. Die Liste ist keine Rekonstruktion möglicher
+  Standort- oder Geräteänderungen während 2024.}
+  \label{tab:stations}
+\end{table}
+
+Die Jahresprüfung umfasste
+Temperatur und relative Feuchtigkeit, Windgeschwindigkeit sowie Niederschlag.
+Für jede Station enthält das Zehn-Minuten-Raster 52\,704 Zeitpunkte je
+abgefragter View. Insgesamt wurden 632\,448 Datensätze aus drei Views
+geprüft. Ein vorhandener Zeitstempel bedeutet dabei nicht, dass alle
+Messgrößen einen gültigen Wert besitzen.
+
+Die Temperatur ist ein Momentanwert in zwei Metern Höhe. Windwerte beziehen
+sich auf das vorhergehende Zehn-Minuten-Intervall; Niederschlag ist eine
+Intervallsumme. Die Originalbeschreibungen des DWD erläutern diese
+unterschiedlichen Messgrößen \autocite{dwd2024temperature,dwd2024wind,dwd2024precipitation}.
+Die Daten werden direkt per HTTP als JSON-Listen aus dem Schema
+\texttt{dwd} gelesen. Die drei Messansichten sind
+\texttt{v\_air\_temperature}, \texttt{v\_wind} und
+\texttt{v\_precipitation}. Tabelle~\ref{tab:fields} beschreibt die
+verwendeten Felder. Jede Messzeile besitzt außerdem eine Stations-ID,
+einen Zeitstempel und eine Qualitätsklasse. Die Views liefern bereits
+umgerechnete Werte; es erfolgt keine zweite Skalierung.
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{p{0.39\linewidth}p{0.12\linewidth}p{0.36\linewidth}}
+    Feld & Einheit & Verwendete Tageskennzahl \\
+    \hline
+    \texttt{lufttemperatur\_c} & °C & Mittel der Momentanwerte \\
+    \texttt{rel\_feuchte\_prozent} & \% & Mittel der Feuchtigkeitswerte \\
+    \texttt{windgeschw\_ms} & m/s & Mittel der Intervallmittel \\
+    \texttt{niederschlag\_mm} & mm & Summe der Intervallmengen \\
+  \end{tabular}
+  \caption{Felder und Tagesaggregation der gewählten Messansichten.
+  Jede ausgegebene Tageskennzahl benötigt 144 verwendbare Werte.}
+  \label{tab:fields}
+\end{table}
+
+Die Anmeldung fordert ein Token am Endpunkt \texttt{/token} an.
+Messanfragen senden anschließend einen Bearer-Token und
+\texttt{Accept-Profile: dwd}. Stations- und Zeitfilter begrenzen die
+Antworten; Zeitstempel werden aufsteigend sortiert. Die Anwendung
+verwendet die Uni-Schnittstelle und benötigt keine lokalen Messdateien.
+Die lokalen CSV-Nachweise sind getrennte Prüfgrundlagen und werden nicht
+als Datenquelle der Benutzeroberfläche eingelesen.
+
+Die Anwendung verwendet UTC-Tage. Für Temperatur reichen die Zeitpunkte von
+00:00 bis 23:50 Uhr. Ein Tagesmittel wird nur aus 144 vorhandenen,
+verwendbaren Temperaturwerten gebildet. Fehlende Werte werden nicht
+interpoliert. Für Wind und Niederschlag ist nach der festgelegten nominalen
+Intervallzuordnung der Zeitraum von 00:10 Uhr bis einschließlich 00:00 Uhr
+des Folgetags vorgesehen. Die dokumentierte gerätebedingte Zeitunsicherheit
+des Niederschlags wird nicht durch eine unbelegte Verschiebung korrigiert.
+
+Im aktuellen Programm werden Temperatur und relative Feuchtigkeit eines
+Tages oder monatsweise für das Jahr per HTTP abgerufen. JSON-Nullwerte und die Fehlwertcodes $-999$ sowie
+$-99{,}9$ werden als fehlend behandelt. Fremde Stations-IDs, doppelte
+Zeitstempel, mehr als 144 Datensätze und Abweichungen vom angefragten
+Zehn-Minuten-Raster führen zu einer Fehlermeldung. Abweichende
+Qualitätsklassen werden angezeigt; ein Tagesmittel wird derzeit nur für
+vollständige Reihen mit Qualitätsklasse 3 ausgegeben. Werte der Klasse 0
+werden im Diagramm nicht gezeichnet.
+Die Jahresaggregation gruppiert validierte Zeitpunkte nach Station und
+UTC-Datum. Temperatur- und Feuchtigkeitsmittel besitzen getrennte
+Abdeckungswerte. Zusätzlich wird die längste Temperaturfehlstelle aus dem
+vollständigen Raster von 144 Positionen berechnet, einschließlich Lücken am
+Tagesanfang oder -ende. Ohne Datensätze entstehen ein fehlendes Tagesmittel,
+eine Abdeckung von null und eine Fehlstelle von 1440 Minuten.
+Beim Browserabgleich stimmten alle 2928 Stations-/Tages-/Feld-Auswertungen
+für Temperatur und Feuchtigkeit mit dem unabhängig zuvor in PowerShell
+erzeugten Jahresnachweis überein. Es stehen 1450 vollständige
+Temperaturtage zur Verfügung.
+Wind und Niederschlag werden ebenfalls monatsweise aus den Uni-Views
+abgerufen. Die Anfrage verwendet Tagesbeginn exklusiv und Monatsende
+einschließlich. Damit gehört zum Dezember auch der Intervallendwert vom
+1. Januar 2025 um 00:00 Uhr. Elm erzeugt die erwarteten Intervallenden
+jedes Tages und ordnet jeden Zeitstempel einer eindeutigen Tagesposition zu.
+Wind wird gemittelt, Niederschlag summiert. Beide Kennzahlen benötigen
+144 vorhandene Werte und die verwendbare Qualitätsklasse. Nullwerte im
+Niederschlag bleiben vorhandene Werte, auch wenn die Tagesmenge null ist.
+Fehlende Intervalle führen zu einer fehlenden vollständigen Tageskennzahl.
+Die Uni-Metadaten unterscheiden Klasse 0 (Error), 1 (nur formale Prüfung),
+2 (nach individuellen Kriterien geprüft) und 3 (automatische Prüfung und
+Korrektur). Der vollständig untersuchte Datenbestand trägt Klasse 3.
+Diese Anwendung gibt Tagesaggregate nur bei Klasse 3 für sämtliche Zeilen
+aus. Andere Klassen werden als Abweichung angezeigt; vorhandene Rohwerte
+der Klassen 1 und 2 bleiben im Temperaturdetail sichtbar. Klasse 0 wird
+nicht gezeichnet. Diese vorsichtige Projektregel ist keine allgemeine
+Rangordnung der Messgenauigkeit und kein meteorologischer
+Fehlerfreiheitsnachweis.
+
+Die vollständige Abdeckungsregel wurde gegen Mindestanteile von 90 und
+95\,\% verglichen. Eine zusätzliche Variante beschränkt Lücken auf
+60 Minuten und fordert mindestens 33 von 36 Werten in jedem
+Sechs-Stunden-Abschnitt. Für den vorliegenden Bestand ergeben 95\,\%
+mit diesen Zusatzbedingungen dieselben verwendbaren Tage wie 100\,\%.
+Die einfachere vollständige Regel verliert somit gegenüber dieser
+geprüften Alternative keine Tage. Sie verhindert insbesondere, dass eine
+unvollständige Niederschlagssumme als vollständige Tagessumme erscheint.
+Sie ist eine begründete Entscheidung für diesen Datenumfang, keine
+Vorgabe des Lehrenden und keine Freigabe für andere Jahre.
+
+Die DWD-Beschreibungen belegen UTC und Messintervallbedeutung
+\autocite[jeweils~S.~2]{dwd2024temperature,dwd2024wind}.
+Für Niederschlag bleibt die dokumentierte Gerätezeitunsicherheit relevant
+\autocite[S.~2--3]{dwd2024precipitation}.
+Für 2024 geltende Uni-Parametereinträge wurden ebenfalls auf UTC geprüft.
+Ein zusätzlicher Originalabgleich bestätigte für Wittenberg alle
+52\,704 Jahreszeitpunkte in allen vier Messfeldern einschließlich
+Fehlstellen. Dieser Nachweis betrifft die Originale Wittenbergs;
+ein gleichartiger vollständiger DWD-Originalabgleich aller vier Stationen
+wird nicht behauptet. Die drei übrigen Stationen sind durch die
+vollständige Uni-Jahresprüfung und die dokumentierten Metadaten abgedeckt.
+
+\section{Visualisierungen}
+Die drei implementierten Techniken unterstützen unterschiedliche Schritte des
+regionalen Vergleichs: Orientierung im Jahr, Vergleich mehrerer Größen und
+Untersuchung zeitlicher Details.
+\subsection{Analyse der Anwendungsaufgaben}
+Der Verlaufvergleich verlangt, Temperaturhöhe, Abstand und Veränderungen
+mehrerer Stationen zu identischen Zeitpunkten zu lesen. Zeit ist dafür
+eine geordnete gemeinsame Achse. Die Profilfrage verlangt eine Schnittmenge
+mehrerer Bedingungen, etwa hohes Windmittel und 0\,mm Niederschlag.
+Vier verschieden skalierte Attribute gehören dabei zu demselben
+Stations-/Tagesdatensatz. Die Suche nach einer Temperaturdifferenzumkehr
+verlangt zunächst die Suche nach einem Vorzeichen und anschließend die
+Auswahl des zugehörigen Datums zur Detailprüfung. Im Jahresraster wird
+Zeit auf feste räumliche Positionen abgebildet; dessen Leserichtung
+ist Teil des notwendigen mentalen Modells. Abschnitt~5 führt alle drei
+Aufgaben mit tatsächlichen Daten durch.
+
+Die Stationsfarbe kennzeichnet eine Kategorie und keine Rangfolge.
+Bei Tagesaggregaten beziehen sich die vier Profilwerte auf denselben
+UTC-Tag, aber nicht auf eine gemeinsame Uhrzeit. Der Jahresrasterabstand
+ist kein geografischer Abstand. Leserichtung, Einheiten und Aggregation
+werden deshalb ausdrücklich erläutert.
+\subsection{Anforderungen an die Visualisierungen}
+Die Anforderungen werden den konkreten Fragen und ihren Nachweisen
+zugeordnet (Tabelle~\ref{tab:requirements}). Für alle Ansichten gelten
+dieselben Qualitätsregeln: Fehlwerte bleiben fehlend, Rohwerte und
+Tagesaggregate werden bezeichnet und gemeinsame Auswahlen lassen sich
+zurücksetzen.
+
+\begin{table}[htbp]
+  \centering\small
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}}
+    Frage & Anforderung und Umsetzung & Überprüfbarer Nachweis \\
+    \hline
+    Gleichzeitige Temperaturen vergleichen & Gemeinsame Zeit- und Temperaturskala; Linien mit offenen Fehlstellen & Juli-Woche: 1008 Werte je Station; Abschnitt~5.1 \\
+    Mehrere Wetterbedingungen verknüpfen & Vier getrennte Einheiten; UND-Filter und Trefferzahl in parallelen Koordinaten & 16 Windprofile; kein Treffer mit zusätzlich 0\,mm; Abschnitt~5.2 \\
+    Vorzeichenwechsel im Jahr finden & Stabile Tagespositionen; divergierende Differenzfarben; verknüpfte Details & 28. Dezember: $-10{,}72$\,°C für Wittenberg minus Brocken; Abschnitt~5.3 \\
+  \end{tabular}
+  \caption{Aufgaben, Anforderungen und Nachweise der drei Techniken.}
+  \label{tab:requirements}
+\end{table}
+
+Die Begründung orientiert sich an Expressivität, Effektivität und
+Angemessenheit aus der Vorlesung: Eine Abbildung soll die beabsichtigte
+Datenaussage erhalten, die konkrete Aufgabe für die Zielgruppe unterstützen
+und mit vertretbaren Ressourcen erzeugt werden
+\autocite[Folien~18--22]{hinneburg2020infovis}. Diese Kriterien strukturieren
+den Entwurf; technische Tests allein belegen keine intuitive Bedienbarkeit.
+\subsection{Präsentation der Visualisierungen}
+\subsubsection{Visualisierung Eins}
+Das erste implementierte Diagramm zeigt Temperatur auf einer gemeinsamen
+vertikalen Skala und die Uhrzeit eines UTC-Tages auf der horizontalen Achse.
+Jede Station besitzt eine feste Farbe. Unterbrechungen fehlender Werte
+bleiben sichtbar; einzelne isolierte Messwerte erscheinen als Punkte.
+Die Tabelle ergänzt Messabdeckung, vollständiges Tagesmittel und Status.
+
+Die ergänzende Zeitraumansicht umfasst Start- und Endtag einschließlich.
+Bis sieben Tage zeigt sie Zehn-Minuten-Temperaturen, ab acht Tagen
+vollständige Tagesmittel aus den geladenen Jahresdaten. Die verwendete
+Auflösung steht unmittelbar über dem Diagramm. Tagesmittel liegen in der
+Darstellung auf der Tagesmitte; sie geben keine Temperaturmessung um
+12 Uhr wieder. Die gemeinsame vertikale Skala wird aus den dargestellten
+Stationsreihen bestimmt und bleibt beim Profilfiltern unverändert.
+Linien verbinden ausschließlich zeitlich benachbarte vorhandene Werte;
+fehlende Tagesmittel bleiben auch in der gröberen Darstellung als Lücken
+sichtbar. Isolierte Werte werden als Punkte gezeichnet.
+Die Grenze von sieben Tagen ist eine gewählte Startkonfiguration und
+noch nicht durch eine Nutzerstudie als optimal belegt.
+Sie begrenzt die Rohwertmenge auf höchstens 1008 Werte je Station
+und erlaubt die Betrachtung einer vollständigen Woche. Für größere
+Zeiträume stehen Jahresaggregate bereits zur Verfügung. Damit ist die
+Grenze als Ressourcen- und Detailkompromiss begründet; acht Tage besitzen
+keine grundsätzlich andere meteorologische Bedeutung.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{Abbildungen/mehrtagesansicht.png}
+  \par\smallskip
+  {\footnotesize\textcolor[HTML]{0072b2}{\rule{12pt}{2pt}} Wittenberg
+  \quad\textcolor[HTML]{00856a}{\rule{12pt}{2pt}} Brocken\par}
+  \caption{Echte Zeitraumansicht vom 15. bis 21. Juli 2024 mit
+  Zehn-Minuten-Temperaturen von Wittenberg und Brocken. Beide Stationen
+  besitzen 1008 von 1008 vorhandenen Werten. Die wiederkehrenden
+  Tagesverläufe bleiben neben dem Stationsunterschied erkennbar.}
+  \label{fig:range}
+\end{figure}
+Die Positionskodierung erlaubt, die Höhe zweier Temperaturen an derselben
+Zeitposition unmittelbar zu vergleichen. Die Linie unterstützt das Lesen
+zeitlicher Veränderungen; Stationen unterscheiden sich zusätzlich durch
+Farbe und Beschriftung. Ihre Verbindung bedeutet keine Messung zwischen
+zwei Rasterpunkten. Das Diagramm bleibt expressiv, indem es nur gültige
+benachbarte Werte verbindet und die Auflösung ausdrücklich bezeichnet.
+Eine vertikale Nullbasis ist für Temperaturverläufe nicht erforderlich;
+die gemeinsame Achse und ihre Grenzen bleiben jedoch sichtbar.
+
+Die Alternativen lösen unterschiedliche Teilaufgaben. Eine Tabelle
+liefert genaue Einzelwerte und Rangfolgen; für die Frage, wann ein
+Stationsabstand innerhalb der Woche wächst, müssten jedoch viele Zeilen
+verglichen werden. Die Linien legen dafür beide Temperaturen an dieselbe
+Zeitposition. Getrennte Panels reduzieren Verdeckung, verlangen bei
+gleichen Skalen aber den Blickwechsel zwischen zwei vertikalen Positionen;
+mit unterschiedlichen Skalen wären scheinbar gleiche Kurvenabstände
+irreführend. Eine einzelne Differenzlinie zeigte den Abstand direkt,
+verlöre jedoch die absoluten Temperaturen beider Orte. Deshalb kombiniert
+der Entwurf überlagerte Linien für höchstens vier Stationen mit
+Stationswahl und einer genauen Tabelle.
+
+Horizon Graphs reduzieren den Platzbedarf durch Schichtung und Farbe.
+Heer et al. untersuchen, wie Höhe und Schichtung die Leistung bei
+Zeitreihenvergleichen beeinflussen \autocite{heer2009horizon}.
+Das begründet die Prüfung von Darstellungsdichte und Aufgabe, belegt aber
+keine Überlegenheit unseres Wetterdiagramms. Für den gleichzeitigen
+Vergleich weniger absoluter Temperaturen vermeidet die gemeinsame
+gewöhnliche Skala einen zusätzlichen Dekodierschritt. Verdeckung bleibt
+eine Grenze; sie wird durch Eingrenzung vermindert und nicht als gelöst
+ausgegeben.
+\subsubsection{Visualisierung Zwei}
+Die implementierten parallelen Koordinaten zeichnen eine Linie pro
+vollständigem Stations-/Tagesprofil. Die vier vertikalen Achsen kodieren
+Temperaturmittel, Feuchtigkeitsmittel, Windmittel und Niederschlagssumme.
+Jede Achse besitzt ihre eigene Einheit. Die stationstypische Linienfarbe
+wird aus dem Tagesdiagramm übernommen.
+
+Die festen Skalen reichen von $-15$ bis 30\,°C, 0 bis 100\,\%,
+0 bis 30\,m/s und 0 bis 60\,mm. Sie wurden anhand der zuvor geprüften
+Jahresdaten gewählt; beim Filtern werden sie nicht verändert. Die
+Browserprüfung bestätigte, dass alle dargestellten Profilwerte innerhalb
+dieser Bereiche liegen. Diese Wertebereiche gelten für den gewählten
+Projektumfang. Eine Erweiterung auf andere Jahre oder Stationen erfordert
+eine erneute Skalenprüfung.
+
+Von 1464 Stations-/Tagen besitzen 1442 alle vier erforderlichen
+Tageskennzahlen. Die 22 übrigen Profile werden gezählt und nicht als
+vollständige Linien gezeichnet. Ihre vorhandenen Einzelkennzahlen bleiben
+in der Tagesübersicht zugänglich. Reguläre Linien besitzen eine geringe
+Deckkraft; Linien des ausgewählten Tages werden stärker gezeichnet und
+liegen über dem Kontext. Wertefilter blenden unpassende Profile ab.
+Die Darstellungswahl erlaubt zusätzlich, nur passende Profile oder nur
+passende Profile des ausgewählten Tages zu zeichnen. Sie verändert
+weder die Filter noch die Trefferzahl; die Anzahl gezeichneter Profile
+wird gesondert angezeigt.
+Die große Zahl überlagerter Linien macht genaue Einzelvergleiche ohne
+Auswahl schwierig; Filter und Tagesdetails unterstützen die Untersuchung.
+Diese Gestaltungsfragen stehen im Zusammenhang mit den in der Literatur
+behandelten Möglichkeiten und Grenzen paralleler Koordinaten
+\autocite{heinrich2013parallel}.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{Abbildungen/parallele_koordinaten.png}
+  \par\smallskip
+  {\footnotesize Achsen von links nach rechts: Temperatur $-15$ bis 30\,°C;
+  Feuchtigkeit 0 bis 100\,\%; Wind 0 bis 30\,m/s;
+  Niederschlag 0 bis 60\,mm.\par}
+  {\footnotesize
+  \textcolor[HTML]{0072b2}{\rule{10pt}{2pt}} Wittenberg \quad
+  \textcolor[HTML]{d55e00}{\rule{10pt}{2pt}} Leipzig/Halle \quad
+  \textcolor[HTML]{00856a}{\rule{10pt}{2pt}} Brocken \quad
+  \textcolor[HTML]{9a61a4}{\rule{10pt}{2pt}} Hamburg\par}
+  \caption{Diagrammausschnitt der implementierten parallelen Koordinaten:
+  1442 vollständige Wetterprofile, hervorgehobener Tag 19. Juni 2024.
+  Für Brocken fehlen sieben Niederschlagsintervalle; dessen Profil wird
+  deshalb nicht hervorgehoben. Einzelkennzahlen, Filter und Trefferzahl
+  sind in der Anwendung zusätzlich zugänglich.}
+  \label{fig:profiles}
+\end{figure}
+Die vier Achsen trennen quantitative Attribute mit unterschiedlichen
+Einheiten; verbundene Positionen gehören zu einem Stations-/Tag.
+Verbindungssegmente stellen weder zeitliche Übergänge noch eine
+physikalische Zwischenmessgröße dar. Diese Bedeutung ist für die
+Expressivität entscheidend. Temperatur und Feuchtigkeit stehen zuerst,
+Wind und Niederschlag folgen als ergänzende Wettergrößen. Die Reihenfolge
+ist für die gewählten Aufgaben fest und nicht als beste Anordnung für
+sämtliche Korrelationen belegt.
+Für die Frage nach Wind und Niederschlag liegen diese beiden Achsen
+nebeneinander. Zwei Intervalle bilden ihre Schnittmenge, während
+Temperatur und Feuchtigkeit den Kontext der verbleibenden Profile
+sichtbar halten. So bleibt beim zusätzlichen Filter unmittelbar
+erkennbar, ob dieselben Stations-/Tage beide Bedingungen erfüllen.
+
+Der Forschungsüberblick behandelt Achsenreihenfolge, Interaktion und
+Überlagerung als zentrale Gestaltungsfragen
+\autocite[Abschnitte~5--6]{heinrich2013parallel}. Hier verringern geringe
+Deckkraft und hervorgehobene Auswahl die visuelle Konkurrenz, beseitigen
+aber die Überlagerung von 1442 Profilen nicht. Linienintensität erlaubt
+deshalb keine verlässliche Häufigkeitsmessung. Die angezeigte Trefferzahl
+und Detailtabelle ergänzen die grafische Übersicht. Eine sortierte Tabelle
+wäre für exakte Werte und Rangfolgen direkter; eine Scatterplot-Matrix
+unterstützte Paarbeziehungen, benötigte für vier Größen jedoch mehrere
+Teilbilder. Parallele Koordinaten unterstützen hier besonders die
+gleichzeitige Eingrenzung über vier Attribute. Der datenidentische
+Wind-/Niederschlagsvergleich in Abbildung~\ref{fig:profile-comparison}
+zeigt zugleich, wann zwei räumliche Achsen für eine engere Frage
+leichter lesbar sind als vier verbundene Achsen.
+\subsubsection{Visualisierung Drei}
+Die implementierte Jahresübersicht ordnet Tage in neun Blöcken mit je
+42 Positionen an. Das äußere Raster besitzt drei Spalten und drei Zeilen;
+jedes innere Raster besitzt sieben Spalten und sechs Zeilen. Der eigene
+Koordinatenerzeuger übernimmt die zeilenweise rekursive Traversierung aus
+dem in der Veranstaltung bereitgestellten Verfahren. Die rekursive
+Anordnung unterstützt hier die räumlich kompakte Darstellung einer
+geordneten Folge; die Originalarbeit von Keim et al. ist eine methodische
+Grundlage, kein Nachweis der Eignung dieser konkreten Wetterdarstellung
+\autocite{keim1995recursive}.
+
+366 Tage belegen 378 Positionen. Die zwölf übrigen Plätze bleiben leer und
+besitzen eine gepunktete Umrandung. Innerhalb eines Blocks wird von links
+nach rechts und zeilenweise nach unten gelesen, anschließend wird zum
+nächsten Block gewechselt. Ein Block umfasst sechs Wochen und ist kein
+Kalendermonat. Datumsbereiche beschriften die Blöcke; Zellen mit der Ziffer
+1 kennzeichnen Monatsanfänge.
+
+Eine gemeinsame, feste Farbskala kodiert das Temperaturtagesmittel in sieben
+Bereichen: unter 0\,°C, 0 bis unter 5\,°C, 5 bis unter 10\,°C,
+10 bis unter 15\,°C, 15 bis unter 20\,°C, 20 bis unter 25\,°C und
+mindestens 25\,°C. Dunkle Farben stehen für niedrigere, hellere für höhere
+Temperaturen. Diese Bereiche werden beim Filtern nicht neu berechnet.
+Die Klasseneinteilung erlaubt eine grobe Jahresorientierung, verbirgt aber
+Unterschiede innerhalb eines Bereichs. Der genaue Wert ist deshalb über
+die Zelleninformation zugänglich.
+
+Schraffuren unterscheiden fehlende vollständige Tagesmittel von einem
+echten Nullwert. Noch ungeladene Monate und Abruffehler besitzen eigene
+Darstellungen; sie werden nicht als Messwertlücken ausgegeben. Die
+orangene Umrandung markiert den im Tagesdiagramm ausgewählten Tag über
+alle sichtbaren Stationen hinweg.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{Abbildungen/jahresuebersicht.png}
+  \par\smallskip
+  {\footnotesize Temperaturmittel (°C):
+  \textcolor[HTML]{00224e}{\rule{1em}{0.7em}}~$<0$\quad
+  \textcolor[HTML]{31446b}{\rule{1em}{0.7em}}~$0$ bis $<5$\quad
+  \textcolor[HTML]{666970}{\rule{1em}{0.7em}}~$5$ bis $<10$\quad
+  \textcolor[HTML]{929477}{\rule{1em}{0.7em}}~$10$ bis $<15$\quad
+  \textcolor[HTML]{bcb578}{\rule{1em}{0.7em}}~$15$ bis $<20$\quad
+  \textcolor[HTML]{e4d45a}{\rule{1em}{0.7em}}~$20$ bis $<25$\quad
+  \textcolor[HTML]{fee838}{\rule{1em}{0.7em}}~$\geq25$.\par}
+  \caption{Tatsächliche Recursive-Pattern-Jahresübersicht nach dem geprüften
+  Browserabruf am 3. Oktober 2026. Alle Panels verwenden dieselbe
+  Tagesanordnung und dieselben festen Temperaturbereiche. Markiert ist der
+  15. Juli; schraffierte Temperaturtage sind unvollständig, die zwölf
+  gepunkteten Plätze am Ende gehören nicht zum Jahr.}
+  \label{fig:year}
+\end{figure}
+Für die Orientierung im Jahr wird ein Tageswert auf eine Zelle abgebildet.
+Identische Tagespositionen und eine gemeinsame Skala unterstützen den
+Stationsvergleich. Die rekursive Gruppierung ordnet eine Zeitfolge
+kompakt an \autocite{keim1995recursive}; die hier gewählten 42-Tage-Blöcke
+übernehmen die zeilenweise Variante der Lehrmaterialien. Eine Zelle ist
+eine Tagesaggregation und keine verlustfreie Darstellung aller Rohwerte.
+Farben ermöglichen die Suche nach groben Bereichen; genaue quantitative
+Vergleiche werden durch die Klassen begrenzt und benötigen Details.
+
+Die Klassengrenzen bleiben beim Filtern unverändert, damit eine Farbe
+ihre Bedeutung behält. Eine Kalender-Heatmap hätte vertrautere Monats-
+und Wochenbezüge. Die rekursive Anordnung benötigt deshalb Blockbereiche,
+Monatsanfänge und eine ausdrückliche Leserichtung. Eine Jahreslinie würde
+genaue Wertabstände und Nulldurchgänge besser darstellen, bietet aber eine
+andere räumliche Übersicht. Recursive Pattern wird hier für Orientierung
+und Tageswahl eingesetzt; die Vorlesungstechnik allein begründet keinen
+Wahrnehmungsvorteil gegenüber diesen Alternativen.
+Identische Datumspositionen erleichtern den Vergleich mehrerer Panels.
+Die zusätzliche Lesehilfe nummeriert die Blockfolge von 1 bis 9;
+kräftigere Rahmen markieren Monatsanfänge. Diese Hilfen reduzieren
+Orientierungsaufwand, ersetzen aber nicht die vertrauten Monatsbezüge
+eines Kalenders. Den direkten Entwurfsvergleich für dieselbe
+Vorzeichenfrage zeigt Abbildung~\ref{fig:calendar-comparison}.
+
+Der Differenzmodus ersetzt die Stationspanels durch ein Panel für ein
+geordnetes Stationspaar A und B. Jede Zelle kodiert das Temperaturmittel
+von A minus B. Die feste divergierende Farbskala ist um null zentriert:
+Blau bedeutet A kälter, Rot A wärmer und die neutrale Mitte eine Differenz
+von null. Die Grenzen liegen bei $-10$, $-5$, $-2$, 0, 2, 5 und
+10\,°C; die Legende benennt auch die offenen und geschlossenen Grenzen.
+Eine vollständige Differenz erfordert dieselben 144 verwendbaren
+Zeitpunkte und zwei vollständige Tagesmittel. Elm speichert deshalb
+zusätzlich die Menge vorhandener Temperatur-Zeitplätze je Tag und bildet
+ihre Schnittmenge. Bei vollständiger gemeinsamer Abdeckung ist die
+Differenz der beiden Mittel gleich dem Mittel der paarweisen Differenzen.
+Bei unvollständiger Abdeckung bleibt die Tagesdifferenz fehlend; Zahl und
+längste Fehlstelle der gemeinsamen Zeitplätze bleiben ablesbar.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{Abbildungen/jahresdetail.png}
+  \par\smallskip
+  {\footnotesize Differenz $\Delta =$ Wittenberg minus Brocken (°C):\par
+  \begin{tabular}{lll}
+  \textcolor[HTML]{2166ac}{\rule{1em}{0.7em}}~$\Delta\leq-10$ &
+  \textcolor[HTML]{4393c3}{\rule{1em}{0.7em}}~$-10<\Delta\leq-5$ &
+  \textcolor[HTML]{92c5de}{\rule{1em}{0.7em}}~$-5<\Delta\leq-2$\\
+  \textcolor[HTML]{d1e5f0}{\rule{1em}{0.7em}}~$-2<\Delta<0$ &
+  \textcolor[HTML]{888888}{\fbox{\textcolor[HTML]{f7f7f7}{\rule{0.8em}{0.5em}}}}~$\Delta=0$ &
+  \textcolor[HTML]{fddbc7}{\rule{1em}{0.7em}}~$0<\Delta<2$\\
+  \textcolor[HTML]{f4a582}{\rule{1em}{0.7em}}~$2\leq\Delta<5$ &
+  \textcolor[HTML]{d6604d}{\rule{1em}{0.7em}}~$5\leq\Delta<10$ &
+  \textcolor[HTML]{b2182b}{\rule{1em}{0.7em}}~$\Delta\geq10$
+  \end{tabular}\par}
+  \caption{Vergrößertes Jahrespanel des geprüften Differenzmodus für Wittenberg minus Brocken,
+  ausgewählter 28. Dezember 2024. Dunkle Rahmen markieren Monatsanfänge,
+  die orange Markierung bezeichnet den ausgewählten Tag.
+  354 Tage besitzen vollständige gemeinsame Vergleichswerte;
+  Schraffuren markieren die zwölf unvollständigen Tage. Die zwölf
+  unbenutzten Rasterplätze am Ende bleiben gesondert gekennzeichnet.
+  Negative und positive Unterschiede verwenden dieselbe feste Farbskala.}
+  \label{fig:difference}
+\end{figure}
+
+\subsection{Interaktion}
+Ein Stationswechsel aktualisiert Jahrespanels und Profile unmittelbar.
+Tagesdetails und ein bereits übernommener Zeitraum werden nach
+250\,ms ohne weitere Stationsänderung automatisch übernommen. Dabei bleibt der
+geladene Detailtag erhalten; eine noch nicht übernommene Datumseingabe
+wird nicht versehentlich geladen. Ein neues Datum wird weiterhin mit
+der Schaltfläche bestätigt. Bei leerer Stationswahl werden Tages- und
+Zeitraumdaten aus der Anzeige entfernt. Anfragegenerationen verhindern,
+dass verspätete Antworten vorheriger Auswahlen zurückkehren.
+
+Ein Klick oder eine Aktivierung per Eingabetaste
+in der Jahresübersicht übernimmt den Zelltag und lädt die Tagesdetails.
+Die übrigen aktiven Stationen bleiben für den Vergleich ausgewählt.
+Auch ein Tag mit fehlendem Tagesmittel bleibt auswählbar, damit die
+vorhandenen Rohwerte und deren Abdeckung überprüft werden können.
+Die Auswahl wird umgekehrt auch beim Laden über das Datumsfeld in den
+Jahrespanels markiert. Pfeiltasten bewegen ausschließlich den Fokus um
+einen oder sieben Tage; erst die Aktivierung löst einen Tagesabruf aus.
+Unter jeder Profilachse erlauben zwei Regler die Auswahl einer unteren und
+oberen Wertgrenze. Aktive Intervalle werden durch logisches UND verbunden.
+Nur vollständige Profile, die alle Intervalle erfüllen, gelten als passend.
+Ihre Tageszellen bleiben in der Jahresübersicht hervorgehoben;
+andere Zellen werden abgeblendet. Im Tagesdiagramm werden die
+Temperaturreihen unpassender Stations-/Tage abgeblendet und bleiben als
+Rohwertkontext erhalten. Linien verbinden weiterhin ausschließlich
+zeitlich benachbarte vorhandene Messwerte, unabhängig von der Profilwahl.
+
+Ein Klick auf eine Profillinie übernimmt deren Datum für die Tagesdetails.
+Die Linien des gewählten Tages lassen sich auch per Tastatur aktivieren.
+Zusätzlich bietet eine native Auswahl die aktuell passenden Profile an.
+Die Suche grenzt diese Liste nach Stationsnamen und Datum ein; sowohl
+ISO-Datum als auch Tag.Monat.Jahr sind möglich. Mehrere Suchwörter gelten
+gemeinsam, unabhängig von Groß- und Kleinschreibung. Die Suche verändert
+nur den Zugang zur Auswahl, nicht die Wetterfilter oder die Diagramme;
+ihre separate Trefferzahl benennt diesen Unterschied. Eine leere Liste
+wird deaktiviert. So bleibt ein bekanntes Datum ohne präzisen Linienklick
+erreichbar. Die Rücksetztaste entfernt Profilintervalle und Suchtext und stellt
+die Darstellung des Gesamtkontexts wieder her,
+ohne Datum oder Stationswahl zu verändern.
+
+Start- und Enddatumsfelder übernehmen einen zusammenhängenden Zeitraum.
+Die Jahresübersicht bleibt vollständig sichtbar und markiert den
+Zeitbereich. Parallele Koordinaten zeigen nur die Profile dieses Bereichs;
+außerhalb liegende Tage werden nicht als unvollständige Profile gezählt.
+Im Zeitraumdiagramm bleiben unpassende Profile als abgeblendeter
+Temperaturkontext erhalten. Passende, nicht benachbarte Tage werden
+nicht über dazwischenliegende Tage hinweg verbunden. Im Differenzpanel
+müssen beide Stationsprofile die aktiven Werteintervalle erfüllen.
+
+Die Aktivierung eines Tages außerhalb des gewählten Zeitraums hebt diesen
+mit einem sichtbaren Hinweis auf. Ein Stationspaarwechsel setzt den
+Zeitraum ebenfalls zurück. Die beiden Vergleichsstationen bleiben im
+Differenzmodus ausgewählt. Das globale Zurücksetzen entfernt Zeitraum,
+Profilintervalle und Differenzmodus und stellt alle vier Stationen sowie
+den 15. Juli als Detaildatum wieder her. Geladene Jahresdaten bleiben dabei
+erhalten; Abmeldung löscht dagegen die Sitzungscaches.
+Einzelne Jahrespanels lassen sich auf die verfügbare Breite vergrößern;
+auf schmalen Geräten bleibt das größere Raster innerhalb des Panels
+horizontal verschiebbar. Positionen, Farben und Tagesauswahl ändern sich
+dabei nicht (Abbildung~\ref{fig:difference}).
+Die Verknüpfung folgt dem Zusammenspiel von Auswahl, Filterung, Navigation
+und koordinierten Ansichten \autocite{heer2012interactive}. Der Jahresklick
+wechselt vom Überblick zum zeitlichen Detail. Profilintervalle grenzen
+mehrdimensionale Datensätze ein und behalten ihre zeitliche Lage im Jahr.
+Die Zeitraumwahl reduziert Profile, erhält aber den Jahreskontext.
+Damit muss das Datum eines auffälligen Profils nicht manuell in einer
+anderen Ansicht gesucht werden. Die drei tatsächlichen Anwendungsabläufe
+belegen die Weitergabe der Auswahl. Ob dies für die Zielgruppe schneller
+oder verständlicher als unabhängige Ansichten ist, bleibt zu evaluieren.
+Der automatische Stationswechsel vermeidet einen zusätzlichen
+Übernahmeschritt. Eine kurze Wartezeit bündelt schnelle Änderungen;
+validierte Stations-/Tagesdaten werden innerhalb der Sitzung wiederverwendet.
+Die Schaltflächen zum Laden des Detailtags und zum erneuten Zeitraumabruf
+umgehen diese Rohwertcaches ausdrücklich. Generationen schützen den Zustand,
+brechen aber bereits laufende Anfragen nicht physisch ab. Geladene Jahres- und Profildaten werden
+ohne erneuten Abruf gefiltert. Ein neuer Stationspaarvergleich setzt
+den Zeitraum zurück, damit alte Zeitraumdaten nicht einem anderen Paar
+zugeordnet werden.
+
+Eine rechteckige Auswahl im Jahresraster wurde nicht umgesetzt, weil sie
+bei den Blockwechseln keinen eindeutigen zusammenhängenden Zeitraum
+repräsentiert. Start-/Enddatum beschreiben diesen stattdessen ausdrücklich.
+Achsenumordnung ist für die feste Frage nach mehreren Werteintervallen
+nicht erforderlich; die Anwendung untersucht keine beliebigen
+Korrelationshypothesen. Deshalb bleibt die Reihenfolge beschriftet und
+stabil. Grafisches Zoomen wurde zugunsten einer ausdrücklich gewählten
+Zeitspanne und benannter Auflösung weggelassen. Auch die Profilwahl hat
+eine Grenze: Per Tastatur sind die Linien des bereits ausgewählten Tages
+aktivierbar; die native Profilauswahl ergänzt deshalb einen Zugang zu allen
+aktuell passenden Profilen. Beliebige Tage können über Jahreszellen oder das
+Datumsfeld gewählt werden. Damit wird keine vollständige Barrierefreiheit
+behauptet.
+
+\section{Implementierung}
+\begin{figure}[htbp]
+  \centering
+  \input{Abbildungen/datenfluss.tex}
+  \caption{Datenfluss eines erfolgreichen Abrufs. Nutzeraktionen erzeugen
+  Elm-Nachrichten und HTTP-Kommandos; gültige Antworten werden aggregiert
+  und dargestellt. Fehlerantworten gehen in einen sichtbaren Fehlerzustand.
+  Generationen verhindern die Übernahme veralteter Antworten.
+  Der lokale Server liefert nur statische Dateien.}
+  \label{fig:architecture}
+\end{figure}
+Die Anwendung verwendet Elm 0.19.1. Abbildung~\ref{fig:architecture}
+ordnet die Module nach dem Datenfluss: \texttt{Main} verwaltet Auswahl,
+Nachrichten und Zustandsübergänge; \texttt{Api} kapselt Anmeldung und
+Messdatenanfragen. \texttt{Weather} stellt Messwerttyp, Decoder,
+UTC-Grenzen und Validierung bereit. \texttt{Year} und \texttt{Profiles}
+bilden Tageskennzahlen; letzteres verwaltet zusätzlich die Wind-/Regenabrufe.
+
+Die Darstellung ist getrennt: \texttt{Recursive} erzeugt Positionen,
+\texttt{YearView} zeichnet Jahrespanels und \texttt{ProfileView}
+Profile, Filter und Auswahl. \texttt{Difference} berechnet gemeinsame
+Abdeckung und Differenzen. \texttt{Range} verwaltet Zeiträume und begrenzte
+Rohwertabrufe, \texttt{RangeView} zeichnet die Reihen.
+\texttt{DailyCache} begrenzt die wiederverwendeten validierten
+Stations-/Tagesreihen. Die folgenden
+Model-Auszüge erklären den gemeinsamen Interaktionszustand.
+
+Anfragen tragen eine fortlaufende Generation. Späte Antworten eines älteren
+Abrufs werden verworfen, sodass sie einen neueren Zustand nicht
+überschreiben. Passwort und Sitzungstoken werden nicht in Local Storage oder
+Session Storage gespeichert. Der lokale Node-Server liefert ausschließlich
+die statischen Anwendungsdateien; die HTTP-Anfragen sendet Elm direkt an den
+Uni-Server.
+
+Der Jahresabruf umfasst 48 Stationsmonate. Eine Warteschlange lässt höchstens
+zwei Jahresanfragen gleichzeitig zu. Anfragen verlangen maximal 5000 Zeilen
+pro Seite. Ist das Monatsraster noch nicht vollständig, wird mit dem
+Offset der tatsächlich erhaltenen Zeilen weitergeladen, bis eine leere
+Abschlussseite eintrifft oder alle erwarteten Zeitpunkte vorliegen.
+Validierung erfolgt vor Übernahme des Monats. Ein Sicherheitslimit von zwölf
+Seiten verhindert unbegrenzte Anfragefolgen; eine Überschreitung wird als
+Abruffehler angezeigt. Nach der Aggregation werden die Monatsrohwerte
+verworfen, erfolgreiche Tagesaggregate bleiben für die Sitzung erhalten.
+Fehlgeschlagene Monate lassen sich erneut laden, ohne erfolgreiche Monate
+abermals abzurufen. Tages- und Jahresanfragen verwenden getrennte
+Generationen, damit ein Tageswechsel keinen Jahresabruf ungültig macht.
+Nach dem Temperatur-Jahresabruf werden 96 weitere Feld-/Stationsmonate
+für Wind und Niederschlag geladen, wiederum mit höchstens zwei
+gleichzeitigen Anfragen. Dieser zweite Abruf kann erst nach Abschluss der
+ersten Jahreswarteschlange gestartet werden. Erfolgreiche Intervallmonate
+bleiben bei gezielter Wiederholung fehlgeschlagener Monate erhalten.
+Abmeldung löscht Kennzahlen und Filter; alte Antworten dürfen den neuen
+Sitzungszustand nicht überschreiben.
+
+Der Datenfluss beginnt mit einer Auswahl in \texttt{Main}; ein
+HTTP-Kommando aus \texttt{Api} liefert eine Nachricht mit
+\texttt{Result}. Validierte Messwerte werden zu Tageskennzahlen
+aggregiert und an die View-Module übergeben. Fehler bleiben als eigener
+Zustand sichtbar. Der folgende Auszug enthält ausschließlich die für
+Auswahl und Antworten wesentlichen Felder des tatsächlichen Models;
+Anmeldung, Warteschlangen und weitere Felder sind ausgelassen.
+\begin{verbatim}
+type alias Model =
+    { selected : Set Int
+    , dateInput : String
+    , requestDay : Maybe String
+    , yearDays : Dict Int (Dict String Year.Daily)
+    , profiles : Profiles.Model
+    , filters : Dict Int ( Float, Float )
+    , range : Range.Model
+    , generation : Int
+    -- Weitere Felder sind hier ausgelassen.
+    }
+\end{verbatim}
+Zwei relevante Konstruktoren aus \texttt{Msg} sind
+\texttt{ChooseYearDay} und \texttt{GotMeasurements}.
+Die erste Nachricht trägt Stations-ID und Datum, die zweite zusätzlich
+die Anfragegeneration und das Ergebnis als
+\texttt{Result Http.Error (List Measurement)}.
+Ein Jahresklick löst \texttt{ChooseYearDay} aus: Das Datum und der Fokus
+werden übernommen, die Station wird in die Auswahl eingefügt und
+\texttt{Load} startet den Tagesabruf. Dieser setzt den geladenen
+Tageskontext und erhöht die Anfragegeneration. Erst eine passende
+\texttt{GotMeasurements}-Antwort aktualisiert das Ergebnis.
+\texttt{ProfileFilter} verändert dagegen die Intervallgrenzen ohne neuen
+Datenabruf; die Views berechnen daraus gemeinsame Hervorhebungen.
+
+Die technischen Prüfungen vergleichen die Jahreskennzahlen mit getrennt
+erzeugten CSV-Nachweisen: 2928 Temperatur-/Feuchtigkeitsauswertungen,
+5768 Kennzahlen der 1442 Profile und 2196 Paar-/Tagesvergleiche.
+Kontrollierte Antworten prüfen insbesondere Pagination, Fehlwerte,
+Mitternacht, Schaltjahr, Jahresende und verspätete Antworten.
+Der echte HTTP-Zugriff deckte einen unzulässigen CORS-Header
+\texttt{Prefer} auf; dessen Entfernung behob den Browserabruf.
+Die Prüfskripte liegen unter \texttt{app/scripts}; die zugehörigen
+CSV-Nachweise liegen unter \texttt{Datenpruefung} und \texttt{Entwurf}.
+
+Die Zeitraumwarteschlange erlaubt höchstens zwei gleichzeitige
+Zeitraumanfragen. Eine Woche mit vier Stationen umfasst 4032
+Temperatur-Zeitplätze. Die beiden getrennten Rohwertcaches für Detailtage
+und Zeiträume speichern jeweils höchstens 28 zuletzt abgelegte
+Stations-/Tagesreihen: zusammen höchstens 8064 Zeitplätze mit Temperatur
+und Feuchtigkeit. Das ist eine Grenze der Cache-Einträge, keine Messung
+des gesamten Speicherverbrauchs; angezeigte Ergebnisse und laufende
+Antwortpuffer kommen hinzu. Fehlgeschlagene oder ungültige Antworten
+werden nicht gecacht. Abmeldung und neue Anmeldung leeren beide Caches.
+Ein ausdrücklich erneuter Tages- oder Zeitraumabruf umgeht den jeweiligen
+Cache. Ohne diesen Schritt bleiben erfolgreich geladene Daten bis zur
+Verdrängung wiederverwendbar; Änderungen am Server werden dann nicht
+automatisch erkannt.
+
+Längere Zeiträume verwenden Tagesaggregate des Jahrescaches. Die
+gleichzeitig aktualisierten Einzeltagesdetails besitzen einen getrennten
+Abruf; die Grenze von zwei gilt daher nicht für alle HTTP-Anfragen
+zusammen. Stationsänderungen erhöhen sofort die Antwortgeneration und
+eine Revisionsnummer. Erst die nach 250\,ms noch aktuelle Revision startet
+die nächste Übernahme. Die Verzögerung ist eine Entwurfsentscheidung,
+kein gemessener optimaler Wert. Alte Antworten werden verworfen; bereits
+laufende HTTP-Anfragen werden nicht physisch abgebrochen.
+
+Die Vergleichsprüfung bestätigt gemeinsame Temperaturabdeckung,
+Vorzeichen und die Sieben-/Acht-Tage-Grenze. Der erweiterte Profilfall
+prüft außerdem die gemeinsame Wind-/Niederschlagsauswahl, ein leeres
+Ergebnis und die Rücknahme nur einer Bedingung. Diese Nachweise belegen
+Berechnungen und Zustandsübergänge; sie ersetzen keine Bewertung der
+Verständlichkeit durch die Zielgruppe.
+
+Ein zentraler Rohdatentyp in \texttt{Weather.elm} lautet:
+\begin{verbatim}
+type alias Measurement =
+    { stationId : Int
+    , timestamp : String
+    , temperature : Maybe Float
+    , humidity : Maybe Float
+    , quality : Int
+    }
+\end{verbatim}
+\texttt{Maybe Float} trennt fehlende Werte von vorhandenen Nullwerten.
+Decoderfehler und HTTP-Fehler werden dagegen mit \texttt{Result}
+behandelt. Das Hauptmodel speichert Stationsmengen als \texttt{Set Int}
+und Jahreskennzahlen als verschachtelte \texttt{Dict}-Struktur mit
+Stations-ID und Datum. Ein \texttt{Year.Daily} enthält getrennte
+Temperatur-/Feuchtigkeitsabdeckung, optionale Mittel, die längste
+Temperaturlücke und die Menge vorhandener Temperatur-Zeitplätze.
+Diese Menge ermöglicht die exakte gemeinsame Abdeckung eines
+Stationspaars ohne die Speicherung sämtlicher Jahresrohwerte.
+Wind-/Niederschlagskennzahlen liegen in einer \texttt{Dict}-Struktur mit
+Stations-ID, Messart und Datum. Jedes \texttt{Profiles.Stat} enthält
+Anzahl, optionalen Wert, Lücke und Qualitätsabweichung. Profilfilter
+speichern je Achse untere und obere Grenze; mehrere Intervalle gelten
+gemeinsam. Der Suchtext \texttt{profileQuery} beschränkt ausschließlich
+die native Auswahlliste. Der Zustand der Zeitraumansicht enthält Datumsgrenzen,
+Stationsauswahl, Ergebnisse, Warteschlange und eigene Abrufgeneration.
+
+Der Aufwand lässt sich nach einfachen Grundlagen und schwierigen
+Erweiterungen unterscheiden. Das zeilenweise rekursive Grundverfahren
+war durch das bereitgestellte \texttt{createPixelMap}-Beispiel bereits
+konkret vorgegeben. Der eigene kurze Koordinatenerzeuger übernimmt dessen
+Prinzip mit außen nach innen angeordneten Ebenen; der Abgleich aller
+378 Positionen dokumentiert diese Beziehung. Die Quellenbezeichnung
+steht im Modul \texttt{Recursive} und im Entwurfsnachweis.
+SVG-Achsen, Linien und Formularereignisse waren überschaubare
+Grundbausteine. Vollständige Übungsmodule wurden dabei nicht unverändert übernommen.
+
+Aufwändiger waren das Zusammenführen der nominalen Wind-/Regenintervalle,
+die Feldabdeckung, gemeinsame Temperaturzeitplätze und der Umgang mit
+späten HTTP-Antworten. Diese Teile benötigten separate Zustände und
+gezielte Fehlerprüfungen. Dabei wurden unter anderem ein unzulässiger CORS-Header entfernt und
+ein Test an die gerundeten Anzeigewerte angepasst.
+Eine belastbare Stundenaufzeichnung liegt nicht vor. Der technische
+Entwurf und Code wurden überwiegend durch den Assistenten erstellt;
+eigene Beiträge werden im KI-Abschnitt getrennt dokumentiert.
+
+Die Datenhaltung wird durch begrenzte Monatsseiten, verworfene Monatsrohwerte,
+höchstens sieben dargestellte Rohwerttage pro Zeitraum und die beschriebenen
+Rohwertcaches begrenzt. Jahresaggregate und Zeitplatzmengen bleiben für die Sitzung verfügbar.
+Die Jahresübersicht besitzt vier gleich angeordnete Raster; die
+Profilansicht kann bis zu 1442 Linien enthalten. Technische Prüfungen
+bestätigen Funktion und mobile Breite, ersetzen aber keine Messung von
+Ladezeit, Bildrate oder Speicherverbrauch. Die Anwendung ist auf vier
+Stationen und 2024 festgelegt. Serververfügbarkeit, Tokenlaufzeit und
+CORS bleiben externe Abhängigkeiten. Eine Erweiterung des Datenumfangs
+erfordert neue Prüfungen von Skalen, Messabdeckung und Darstellungsdichte.
+
+Die Datei \texttt{START.txt} beschreibt Installation, Programmstart und
+Berichtserzeugung. Quellcode und LaTeX-Dateien liegen im lokalen
+Git-Repository. Der Link steht im Anhang.
+
+\subsection*{KI-Nutzung und Überprüfung}
+Für die Entwicklung und die Ausarbeitung des Berichts wurde Codex als
+KI-Assistent eingesetzt. Zunächst wurden im Dialog die Fragen festgelegt, die die Anwendung
+beantworten soll, und passende Visualisierungstechniken ausgewählt. Ich entschied mich für Wetterdaten
+und übernahm die besprochenen Vorschläge für Zeitreihen, parallele
+Koordinaten und Recursive Pattern. Daraus wurden die erforderlichen
+Datenstrukturen, Aggregationen und Verknüpfungen der Ansichten abgeleitet.
+
+Als Kontext erhielt der Assistent die Veranstaltungsanforderungen,
+Informationen zu den vorhandenen Daten und ihrer Bereitstellung,
+Übungsbeispiele sowie die in der Vorlesung verlinkten Erläuterungen zu
+den verwendeten Techniken. Das bereitgestellte rekursive Verfahren diente
+beispielsweise als Grundlage für die Tagesanordnung. Die Kolleginnenarbeit
+wurde ergänzend als Anschauungsmaterial betrachtet; maßgeblich blieben
+die aktuellen Veranstaltungsanforderungen.
+
+Auf dieser Grundlage erstellte Codex das erste Elm-Grundgerüst und
+wesentliche Teile der weiteren Implementierung, der Prüfskripte sowie
+der Berichtstexte. Die Ergebnisse wurden anschließend schrittweise
+durchgesehen und überarbeitet. Ich bewertete die dargestellten Ergebnisse,
+traf Auswahlentscheidungen und veranlasste Änderungen, wenn Darstellung
+oder Bedienung nicht den beabsichtigten Aufgaben entsprachen. Kleinere
+Layoutkorrekturen nahm ich auch direkt vor, etwa an den Abmessungen von
+Boxen und der Positionierung von Beschriftungen. Diese Eingriffe wurden
+nicht einzeln nach Datei und Zeitpunkt protokolliert. Größere Änderungen
+wurden im weiteren Dialog durch den Assistenten umgesetzt.
+
+Die technische Kontrolle umfasste den Elm-Compiler, automatisierte
+Browserprüfungen mit echten und kontrollierten HTTP-Antworten sowie
+Abgleiche mit getrennt erzeugten CSV-Auswertungen. Codex führte diese automatisierten Prüfungen aus.
+Ich sah mir die Anwendung zusätzlich selbst an. Konkrete Korrekturen betrafen unter anderem einen
+unzulässigen CORS-Header, Fehlstellen in Zeitreihen und die Behandlung
+verspäteter Antworten nach Auswahländerungen.
+
+Codex erleichterte vor allem die Umsetzung und die wiederholten Tests.
+Die Ergebnisse mussten dennoch geprüft werden: Auch kompilierender Code
+kann Tage falsch zuordnen oder eine schwer verständliche Bedienung ergeben.
+Meine Beiträge waren die Themen- und Variantenwahl, die Durchsicht,
+Entscheidungen über Änderungen und kleinere Layoutanpassungen.
+Große Teile des Codes und des Berichts stammen von Codex. Der \hyperref[app:ai-workflow]{Anhang zum KI-Vorgehen} fasst die
+Kontextgrundlage und die Überarbeitungsschritte zusammen.
+
+\section{Anwendungsfälle}
+Die folgenden drei Abläufe untersuchen konkrete Fragen der Zielgruppe mit
+den tatsächlichen Stationsdaten von 2024. Sie wurden am 4. Oktober 2026
+automatisiert im Browser mit echten HTTP-Abrufen durchgeführt und gegen
+die unabhängigen Jahresauswertungen geprüft. Die Abbildungen zeigen diese Anwendungsläufe.
+Die Prüfung zeigt, ob sich die drei Aufgaben mit der Anwendung bearbeiten
+lassen. Wie gut andere Personen damit zurechtkommen, wurde nicht in einer
+Nutzerstudie untersucht; auch Bearbeitungszeiten wurden nicht gemessen.
+
+\subsection{Anwendung Visualisierung Eins}
+Die Frage lautet: Wie unterscheiden sich die Temperaturen von Wittenberg
+und Brocken im Juli 2024, und was zeigt eine genauere Betrachtung der
+Woche vom 15. bis 21. Juli? Das Stationspaar wird ausgewählt und der
+Zeitraum auf den 1. bis 31. Juli gesetzt. Die Ansicht verwendet
+beschriftete Tagesmittel; beide Reihen enthalten 31 vollständige Tage.
+Anschließend wird der Zeitraum auf den 15. bis 21. Juli eingegrenzt.
+Die Darstellung wechselt zu Zehn-Minuten-Werten mit je 1008 vorhandenen
+Werten, wie Abbildung~\ref{fig:range} zeigt.
+
+In der Wochenansicht sind wiederkehrende Tagesverläufe und eine gemeinsame
+Abkühlung zum 17. Juli erkennbar. In beiden Reihen besitzt der 17. Juli das
+niedrigste Tagesmittel der Woche: Wittenberg 19,35\,°C und Brocken
+10,13\,°C. Die Tagesmittel Wittenbergs sind an allen sieben Tagen höher.
+Die Differenz reicht von 6,03\,°C am 18. Juli bis 10,04\,°C am 16. Juli.
+Am 15. Juli beträgt sie 6,88\,°C. Alle Differenzen wurden vor der Rundung
+aus vollständigen, zeitlich vergleichbaren Reihen berechnet.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.36\textheight,keepaspectratio]{Abbildungen/anwendungsfall_monat.png}
+  \par\smallskip
+  {\footnotesize\textcolor[HTML]{0072b2}{\rule{12pt}{2pt}} Wittenberg
+  \quad\textcolor[HTML]{00856a}{\rule{12pt}{2pt}} Brocken\par}
+  \caption{Juli 2024 als vollständiger Tagesmittelvergleich zwischen
+  Wittenberg und Brocken. Die beschriftete Auflösung unterscheidet sich
+  ausdrücklich vom Wochenvergleich in Abbildung~\ref{fig:range}.}
+  \label{fig:case-month}
+\end{figure}
+
+Der Nutzen für Wetterinteressierte besteht hier darin, vom Monatsüberblick
+eine gemeinsame Veränderung zur genaueren Wochenprüfung auszuwählen.
+An derselben horizontalen Position lassen sich beide Temperaturen
+vergleichen. Bei getrennten Linienpanels muss diese Position zwischen
+zwei Panels übertragen werden; eine Tabelle verlangt für den Wochenbefund
+den Vergleich von sieben Zeilen. Eine sortierte Tabelle wäre dagegen
+für die genaue Rangfolge der Tagesmittel direkter. Die gemeinsame Skala
+und zwei unterscheidbare Reihen begründen hier die überlagerte Linie.
+Diese Leseoperationen sind keine gemessenen Bearbeitungszeiten.
+
+Tagesmittel verdecken die Veränderungen innerhalb eines Tages; die
+Wochenansicht ergänzt deshalb die zeitlichen Details. Höhere Tagesmittel
+beweisen nicht, dass eine Station zu jedem Zeitpunkt wärmer war.
+Das Ergebnis gilt für diesen Zeitraum und diese Stationen und belegt
+weder eine meteorologische Ursache noch einen langfristigen Klimatrend.
+
+\subsection{Anwendung Visualisierung Zwei}
+Die Frage lautet: Gibt es vollständige Tagesprofile mit einem Windmittel
+von mindestens 20\,m/s und zugleich 0\,mm gemessenem Niederschlag?
+Sie untersucht eine Schnittmenge zweier Wetterbedingungen statt einer
+Rangliste. Für die Zielgruppe ist damit nachvollziehbar, welche
+Tageskontexte eine ausgewählte Windbedingung begleiten. Temperatur und
+Feuchtigkeit liefern zusätzlich den Kontext; Tageskennzahlen belegen
+keine Gleichzeitigkeit innerhalb des Tages.
+
+Nach globalem Zurücksetzen werden alle vier Stationen im gesamten Jahr
+betrachtet. Die Winduntergrenze wird auf 20\,m/s gesetzt, alle anderen
+Achsen bleiben uneingeschränkt. Es verbleiben 16 vollständige Profile,
+sämtlich Brocken. Deren Linien verbinden hohe Windmittel mit positiven
+Niederschlagssummen. Die unabhängig geprüften Summen reichen von
+0,75 bis 24,41\,mm.
+
+Anschließend wird die Niederschlagsobergrenze auf 0\,mm gesetzt. Da die
+Untergrenze ebenfalls 0 beträgt, fordert der Filter genau den vorhandenen
+Nullwert. Es bleiben keine passenden Profile und keine hervorgehobenen
+Stations-/Tage im Jahresraster (Abbildung~\ref{fig:case-drywind}).
+Die Anzeige benennt das leere Ergebnis; es ist kein Abruffehler.
+Die Rücknahme nur der Niederschlagsbedingung auf 60\,mm stellt die
+16 Windprofile wieder her. So ist die Wirkung der zweiten Bedingung
+nachvollziehbar, ohne die erste Auswahl zu verlieren.
+\begin{figure}[htbp]
+  \centering
+  {\small (a) Nur Windmittel $\geq20$\,m/s: 16 Treffer\par}
+  \includegraphics[width=\linewidth]{Abbildungen/anwendungsfall_wind.png}
+  {\small (b) Zusätzlich Niederschlag $=0$\,mm: 0 Treffer\par}
+  \includegraphics[width=\linewidth]{Abbildungen/anwendungsfall_wind_ohne_regen.png}
+  \par\smallskip
+  {\footnotesize Aktive Bedingungen: Wind $\geq20$\,m/s UND
+  Niederschlag $=0$\,mm. Treffer: 0 von 1442 vollständigen Profilen.\par}
+  \caption{Dieselben Achsenskalierungen vor und nach dem zweiten Filter.
+  Die 16 passenden Windprofile besitzen positive Niederschlagssummen;
+  die zusätzliche Bedingung entfernt sämtliche Treffer. Abgeblendete
+  Profile bleiben in beiden Diagrammausschnitten als Kontext sichtbar.}
+  \label{fig:case-drywind}
+\end{figure}
+
+Für ein konkretes Vergleichsprofil wird nach Rücknahme der
+Niederschlagsbedingung der 22. Januar über die Profilauswahl geöffnet.
+Brocken besitzt 0,28\,°C Temperaturmittel, 98,28\,\% Feuchtigkeitsmittel,
+26,95\,m/s Windmittel und 15,35\,mm Niederschlagssumme.
+Jede Kennzahl beruht auf 144 vorhandenen Werten. Die übrigen Stationen
+bleiben im Detailvergleich erhalten (Tabelle~\ref{tab:windcase}).
+Das größte verwendbare Windmittel ist ein zusätzlicher rechnerischer
+Befund, kein Hauptargument für die Wahl paralleler Koordinaten.
+\begin{table}[htbp]
+  \centering
+  \small
+  \begin{tabular}{lrrrr}
+    Station & Temperatur & Feuchtigkeit & Wind & Niederschlag \\
+    & (°C) & (\%) & (m/s) & (mm) \\
+    \hline
+    Wittenberg & 6,43 & 77,74 & 5,22 & 1,77 \\
+    Leipzig/Halle & 6,62 & 76,33 & 8,77 & 0,11 \\
+    Brocken & 0,28 & 98,28 & 26,95 & 15,35 \\
+    Hamburg-Fuhlsbuettel & 8,31 & 79,76 & 8,36 & 5,95 \\
+  \end{tabular}
+  \caption{Vollständige Stationsprofile vom 22. Januar 2024 (UTC).
+  Temperatur, Feuchtigkeit und Wind sind Tagesmittel;
+  Niederschlag ist eine Tagessumme.}
+  \label{tab:windcase}
+\end{table}
+
+Eine sortierte Tabelle liefert exakte Werte und Maxima; die gemeinsame
+Filterung muss auch dort dieselben Stations-/Tage betreffen. Die
+datenidentische Projektion in Abbildung~\ref{fig:profile-comparison}
+macht die engere Zweigrößenfrage räumlich direkt lesbar: Alle 16 grünen
+Punkte liegen oberhalb beziehungsweise auf der Windgrenze und rechts
+von 0\,mm. Ihre Niederschlagssummen reichen von 0,75 bis 24,41\,mm.
+Für genau diese Frage ist das Streudiagramm eine gut begründete
+Alternative; die zusätzliche 0-mm-Bedingung schneidet keinen grünen Punkt.
+Es zeigt Temperatur und Feuchtigkeit jedoch nicht. Die parallelen
+Koordinaten behalten diese Größen am selben Profil und erlauben weitere
+Intervalle ohne Ansichtswechsel. Ihr Vorteil betrifft den erweiterten
+Aufgabenumfang, während die Projektion weniger Achsenwechsel erfordert.
+Die neue Wahl zwischen Gesamtkontext, passenden Profilen und ausgewähltem
+Tag reduziert bei Bedarf die Linienmenge; die Trefferzahl bleibt dabei
+unverändert. Ein Zeitvorteil wurde für keine Variante gemessen.
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\linewidth}{!}{\input{Abbildungen/profilvergleich.tex}}
+  \caption{Wind-/Niederschlagsprojektion derselben 1442 vollständigen
+  Stations-/Tagesprofile wie in den parallelen Koordinaten. Die 16 Profile
+  mit Windmittel ab 20\,m/s sind grün und stammen sämtlich vom Brocken.
+  Die waagerechte Linie markiert die Windgrenze; keiner dieser Punkte
+  erfüllt zusätzlich eine Niederschlagssumme von 0\,mm. Überlagerte Punkte
+  sind kein Häufigkeitsmaß. Die Abbildung ist ein Methodenvergleich im
+  Bericht, keine zusätzliche interaktive Anwendungsansicht.}
+  \label{fig:profile-comparison}
+\end{figure}
+
+20\,m/s ist ein gewählter Analysefilter, keine amtliche Ereignisgrenze;
+die 0\,mm-Bedingung ist ein vorhandener Messwert, kein Fehlwert.
+Die beobachtete leere Schnittmenge gilt nur für die 1442 vollständigen
+Profile der vier Stationen von 2024. 22 unvollständige Profile wurden
+ausgeschlossen; deren vorhandene Einzelkennzahlen bleiben zugänglich.
+Aus dem Ergebnis folgt keine allgemeine Beziehung zwischen Wind und
+Niederschlag. \enquote{Profilfilter zurücksetzen} entfernt beide
+Bedingungen und erhält das gewählte Detaildatum.
+
+\subsection{Anwendung Visualisierung Drei}
+Die Frage lautet: Gibt es 2024 Tage, an denen Brocken im Tagesmittel
+wärmer als Wittenberg ist? Nach globalem Zurücksetzen wird der
+Differenzmodus mit A = Wittenberg und B = Brocken gewählt.
+Die Legende erläutert negative Werte als Blau und positive Werte als Rot.
+Die blauen Zellen Ende Dezember fallen gegenüber vielen roten Zellen auf
+(Abbildung~\ref{fig:difference}). Die Aktivierung des 28. Dezember lädt
+die vollständigen Temperaturreihen dieses Tages.
+
+Wittenberg besitzt ein Tagesmittel von $-2{,}30$\,°C, Brocken
+8,42\,°C. Die Differenz A minus B beträgt $-10{,}72$\,°C,
+bei 144 gemeinsamen vorhandenen Zeitpunkten und ohne gemeinsame
+Fehlstelle. Der Unterschied ist daher keine Folge eines nur teilweise
+beobachteten Tages. Die getrennten Kurven und die Mitteltabelle bestätigen
+seine Richtung (Abbildung~\ref{fig:case-december}). Zur chronologischen
+Einordnung kann zusätzlich der 26. bis 31. Dezember als Rohwertzeitraum
+gewählt werden.
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth,height=0.38\textheight,keepaspectratio]{Abbildungen/anwendungsfall_dezember.png}
+  \par\smallskip
+  {\small\begin{tabular}{lrr}
+  Station & Vorhandene Werte & Temperaturmittel \\
+  \hline \textcolor[HTML]{0072b2}{Wittenberg} & 144/144 & $-2{,}30$\,°C \\
+  \textcolor[HTML]{00856a}{Brocken} & 144/144 & 8,42\,°C \\
+  \end{tabular}\par}
+  \caption{Temperaturdiagramm nach Auswahl des 28. Dezember in der
+  Differenzübersicht. Brocken ist an diesem Tag im Mittel 10,72\,°C
+  wärmer als Wittenberg. Beide Reihen besitzen vollständige Abdeckung.}
+  \label{fig:case-december}
+\end{figure}
+
+Die unabhängige vollständige Jahresauswertung enthält 354 verwendbare
+Vergleichstage: An 331 ist Wittenberg im Mittel wärmer, an 23 Brocken.
+Zwölf Tage bleiben unvollständig und werden nicht als Nullunterschiede
+gewertet. Der 28. Dezember besitzt den kleinsten Wert von Wittenberg minus
+Brocken ($-10{,}72$\,°C), der 27. September den größten
+(10,20\,°C). Diese Rangfolge stammt aus der rechnerischen Auswertung;
+die Farbklassen allein unterscheiden keine Rangfolge innerhalb einer Klasse.
+
+\begin{figure}[htbp]
+  \centering
+  \input{Abbildungen/kalendervergleich.tex}
+  \caption{Entwurfsvergleich für dieselbe Frage und dieselben 366 Tage:
+  Wittenberg minus Brocken, mit identischen Farbgrenzen wie in
+  Abbildung~\ref{fig:difference}. Beide Anordnungen zeigen 354 gültige
+  und zwölf unvollständige Vergleichstage. Die Kalenderansicht ist eine
+  Vergleichsabbildung für den Bericht, keine zusätzliche Anwendungsansicht.}
+  \label{fig:calendar-comparison}
+\end{figure}
+Die beiden Anordnungen in Abbildung~\ref{fig:calendar-comparison} machen
+die Umkehr Ende Dezember durch dieselbe blaue Farbe sichtbar. Für die
+Frage nach einem bestimmten Monat ist der Kalender direkter: Seine
+Monatsüberschriften und Wochentagsspalten entsprechen vertrauten
+Datumsbezügen. Recursive Pattern benötigt dagegen die erläuterte
+42-Tage-Leserichtung und den Datumszugriff. Bei gleicher Zellgröße
+nutzt es in diesem Entwurf drei Blockzeilen statt vier Monatszeilen;
+das schafft Platz für mehrere gleich angeordnete Stationspanels.
+Andere Kalenderlayouts können diesen Flächenunterschied verändern.
+Die gewählte Technik verbindet den Vorlesungsbezug mit einer festen,
+kompakten Jahreszuordnung; der Kalender bleibt eine ernsthafte Alternative.
+
+Für Wetterinteressierte führt die Auswahl eines blauen Tages vom
+ungewöhnlichen Stationsverhältnis zu den überprüfbaren Tageskurven.
+Eine nach Differenz gefilterte Tabelle findet negative Tage ebenfalls
+direkt und liefert exakte Zahlen; die Jahresansicht ergänzt deren
+chronologische Umgebung. Für genaue Nulldurchgänge wäre eine
+Differenzlinie geeigneter. Die Farbklassen ersetzen diese Aufgaben nicht.
+Eine meteorologische Erklärung der beobachteten Umkehr wurde nicht
+untersucht; Stationshöhen allein belegen ihre Ursache nicht.
+
+\section{Verwandte Arbeiten}
+\subsection{Wetter- und Luftverschmutzungsanalyse in Hongkong}
+Qu et al. verbinden Polaransichten mit eingebetteten Pixelbalken,
+erweiterte parallele Koordinaten und einen Korrelationsgraphen zur Analyse
+von Wetter- und Luftverschmutzungsdaten. Die Aufgaben umfassen
+Stationsvergleich, Attributbeziehungen und zeitliche Entwicklung.
+Windgeschwindigkeit und Windrichtung bestimmen wichtige Auswahlgesten;
+der Korrelationsgraph unterstützt die Achsenanordnung. Abschnitt~5
+demonstriert die Verwendung anhand von Fallbeispielen
+\autocite[Abschnitte~3--5]{qu2007pollution}.
+
+Gemeinsam ist der Wechsel zwischen Überblick und Untersuchung gefilterter
+Stationsdaten. Unsere Profilfilter und Tageswahl koordinieren dafür
+Jahres- und Temperaturansichten. Der Unterschied liegt in Aufgabe und
+Datenumfang: Vier skalare Wettergrößen eines Jahres unterstützen einen
+Vergleich für Wetterinteressierte, während die veröffentlichte Anwendung
+die fachliche Untersuchung von Schadstoffbeziehungen verfolgt. Ohne
+Windrichtungs- und Schadstoffdaten würde die Übernahme ihrer speziellen
+Polar- und Korrelationsansichten unsere festgelegten Fragen nicht lösen.
+Qu et al. unterstützen die Achsenanordnung mit einem Korrelationsgraphen.
+Für unsere feste Schnittmengenfrage werden Wind und Niederschlag dagegen
+gezielt nebeneinander angeordnet; ein Korrelationsgraph wäre dafür ein
+zusätzlicher Analyseschritt ohne erforderlichen Nutzen.
+Wir verwenden daher vier gerade, fest angeordnete Profilachsen und einen
+Temperaturdifferenzüberblick. Der eigene Beitrag liegt in geprüfter
+Tageszuordnung, sichtbarer gemeinsamer Abdeckung und den dokumentierten
+Bedienabläufen. Wie gut unsere Oberfläche bedienbar ist, lässt sich aus den Fallbeispielen
+von Qu et al. allerdings nicht ableiten.
+
+\subsection{Meteorologische Zeitreihen mit Visplore}
+Vuckovic und Schmidt untersuchen mit Visplore die Qualität synthetischer
+typischer Wetterjahre gegenüber beobachteten meteorologischen Zeitreihen.
+Verbundene Analyseansichten unterstützen Qualitätsprüfung, zeitliche
+Filterung und Untersuchung verschiedener Granularitäten. Fehlstellen,
+Zeitkurven und Verteilungen erhalten unterschiedliche Darstellungen.
+Die Autoren beschreiben auch Grenzen der Datenvorbereitung und
+betonen die beschränkte Übertragbarkeit der Untersuchung eines Systems
+\autocite[Abschnitte~2--4 und~6]{vuckovic2020meteorological}.
+
+Abschnitt~3.2 verbindet Vollständigkeitsprüfung, deskriptive Kennzahlen
+und zeitliches Drill-down in einem Qualitätscockpit. Dieser konkrete
+Zusammenhang begründet, Messabdeckung neben Tageskennzahlen anzuzeigen:
+Ein fehlender Niederschlagswert darf den Wind-/0-mm-Filter nicht erfüllen.
+Für unser Projekt ist besonders die Verbindung von Messabdeckung und
+zeitlichem Vergleich relevant. Unsere Jahreszellen und Tagesdetails
+unterscheiden unvollständige Daten von echten Nullwerten, während die
+Zeitraumwahl zwischen Rohwerten und Tagesmitteln wechselt. Der Zweck ist
+jedoch ein räumlicher Vergleich beobachteter Stationen von 2024, keine
+Validierung eines synthetischen Wetterjahres. Datenabruf und Aggregation
+erfolgen unmittelbar in Elm über die Uni-Schnittstelle. Allgemeine
+Datenaufbereitung, automatische Mustersuche oder ein umfassender
+Qualitätsmonitor sind nicht Teil unseres Systems. Die explizite gemeinsame
+Temperaturabdeckung begrenzt hier eine konkrete Vergleichskennzahl.
+Die Sieben-Tage-Grenze folgt unserem Entwurf; sie wird nicht aus der
+Visplore-Untersuchung als optimale Einstellung abgeleitet.
+
+\subsection{Einordnung der eigenen Anwendung}
+Die Übertragung lässt sich auf drei Entwurfsentscheidungen verdichten
+(Tabelle~\ref{tab:related-transfer}). Qu et al. begründen den Bezug von
+Attributauswahl und koordinierter Detailuntersuchung; Vuckovic und Schmidt
+verdeutlichen, warum zeitliche Vergleiche ihre Datenqualität mitführen
+müssen \autocite{qu2007pollution,vuckovic2020meteorological}. Unsere
+Anwendung verbindet beides für einen begrenzten Stationsvergleich.
+
+\begin{table}[htbp]
+  \centering\small
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.32\linewidth}>{\raggedright\arraybackslash}p{0.31\linewidth}}
+    Bezug & Publizierter Schwerpunkt & Übertragung im Projekt \\
+    \hline
+    Qu et al.: Attributbeziehungen & Schadstoffe, Windrichtung und anpassbare Achsenanordnung & Vier skalare Wettergrößen; feste benachbarte Wind-/Regenachsen für die Schnittmengenfrage \\
+    Vuckovic/Schmidt: Qualität und Zeit & Synthetische Wetterjahre gegenüber beobachteten Reihen; Qualitätscockpit & Beobachtete Stationsdaten; Messabdeckung neben Kennzahlen und offenen Linienlücken \\
+    Beide: abgestimmte Untersuchung & Filterung und Zugriff auf zugehörige Details & Profilintervalle, Jahreszellen und Tagesdetails teilen Auswahl und Datum \\
+  \end{tabular}
+  \caption{Aufgabenbezogene Übertragung aus zwei wissenschaftlichen Anwendungen.}
+  \label{tab:related-transfer}
+\end{table}
+
+Die Einschränkung auf ein Jahr und vier Stationen ersetzt weder deren
+fachliche Funktionen noch die Bewertung ihrer Systeme. Technische
+Browserprüfungen belegen hier Berechnungen und Zustandsübergänge; ein
+Leistungsvergleich mit den publizierten Anwendungen wurde nicht durchgeführt.
+
+\section{Zusammenfassung und Ausblick}
+Die Elm-Anwendung ermöglicht den Vergleich vier deutscher DWD-Stationen
+im Jahr 2024 mit drei interaktiv verbundenen Techniken. Recursive Pattern
+unterstützt die Jahresorientierung, parallele Koordinaten die Untersuchung
+vollständiger Vier-Größen-Profile und Linien die zeitlichen Temperaturdetails.
+Tages-, Zeitraum- und Wertebereichsauswahl verbinden diese Teilaufgaben.
+Für Wetterinteressierte entsteht der Nutzen daraus, auffällige Tage
+auszuwählen und ihre Verläufe und Kennzahlen unmittelbar im gleichen
+Stationskontext zu prüfen. Der Differenzmodus benennt die Richtung
+A minus B und macht die gemeinsame Temperaturabdeckung sichtbar.
+
+Die Anwendungsfälle zeigen den Nutzen der Verbindung: Ein Monatsvergleich
+lässt sich auf eine Woche mit detaillierten Verläufen eingrenzen, eine
+gemeinsame Bedingung für Wind und Niederschlag auf vollständigen Tagesprofilen
+prüfen und ein Vorzeichenwechsel aus dem Jahresraster unmittelbar im
+Tagesverlauf nachvollziehen. Messabdeckung und genaue Kennzahlen bleiben
+dabei zugänglich. Die Datenaufbereitung trennt Momentanwerte,
+Intervallmittel und Intervallsummen; fehlende Werte werden nicht zu
+Nullwerten oder vollständigen Tageskennzahlen. Die unabhängigen Abgleiche
+bestätigen die Berechnungen. Die Ergebnisse beschreiben die ausgewählten
+Stationen und belegen keine meteorologische Ursache.
+
+Grenzen bestehen in der nicht repräsentativen Stationsauswahl, einem
+einzelnen Jahr, nominaler Niederschlagszeitzuordnung, festen Skalen,
+Profilüberlagerung und dem Ausschluss unvollständiger Profile.
+Die Anwendung kann keine langfristigen Klimatrends belegen. Eine Nutzerstudie zur Verständlichkeit und Bedienung wurde nicht durchgeführt.
+
+Über die statische Gegenüberstellung in Abbildung~\ref{fig:calendar-comparison}
+hinaus wäre ein kontrollierter Bedienvergleich mit einer Kalender-Heatmap
+sinnvoll. Weitere Erweiterungen wären eine Auswahl weiterer Jahre und Stationen sowie
+genauer zugeordnete Standort-/Gerätehistorien. Vor einer Erweiterung
+müssten Skalen, Aggregationsregeln und Abrufstrategie erneut geprüft
+werden. Vorrangig wäre die Prüfung der Leserichtung und Auswahlzustände mit
+der Zielgruppe, bevor weitere Daten die Darstellungsdichte erhöhen.
+Dabei könnte untersucht werden, ob
+Leserichtung, Differenzvorzeichen und Auflösungswechsel verstanden werden.
+Damit ließen sich die bisher begründeten Gestaltungsentscheidungen
+über die technischen Tests hinaus bewerten.
+
+\section*{Anhang: Git-Repository}
+\url{https://gitlab.informatik.uni-halle.de/amhxr/informationsvisualisierung}
+
+\section*{Anhang: Vorgehen bei der KI-gestützten Entwicklung}
+\phantomsection\label{app:ai-workflow}
+Die Zusammenarbeit mit Codex umfasste die folgenden Schritte. Dabei
+bauten spätere Aufträge auf den bisherigen Entscheidungen und Dateien auf.
+
+\begin{description}
+  \item[Aufgaben und Entwurf.]
+  Festgelegt wurden Wetter als Thema, vier Stationen, das Jahr 2024 und
+  Fragen zum zeitlichen Temperaturvergleich, zu gemeinsamen
+  Wetterbedingungen und zur Umkehr von Stationsunterschieden.
+  Die Auswahl der Techniken erfolgte anhand dieser Aufgaben und der
+  geforderten Visualisierungsbereiche.
+  \item[Kontext.]
+  Grundlage waren Projektbeschreibung und Berichtsvorlage,
+  Vorlesungs- und Übungsunterlagen, Angaben zur HTTP-Schnittstelle und
+  zu den Messfeldern sowie verlinkte Implementierungs- und
+  Methodenerläuterungen. Das Übungsbeispiel zur rekursiven Anordnung
+  konkretisierte die Positionserzeugung. Die Kolleginnenarbeit lieferte
+  Orientierung zum Umfang einer Ausarbeitung.
+  \item[Schrittweise Erstellung.]
+  Codex erstellte zunächst Anmeldung, Datenabruf und Temperaturdarstellung.
+  Es folgten Jahresaggregation und Recursive Pattern, Wind und
+  Niederschlag mit parallelen Koordinaten sowie Differenzmodus und
+  Mehrtagesansicht. Auch Prüfskripte, wissenschaftliche Einordnung und
+  Berichtspassagen wurden mit KI-Unterstützung erstellt.
+  \item[Bewertung und Anpassung.]
+  Die Zwischenergebnisse wurden durchgesehen und mit den Aufgaben
+  abgeglichen. Änderungswünsche wurden als weitere Arbeitsaufträge
+  formuliert. Größere Überarbeitungen erfolgten durch Codex; kleinere
+  manuelle Eingriffe betrafen Layout und Beschriftungspositionen. Diese
+  kleinen Änderungen wurden nicht einzeln protokolliert.
+  \item[Technische Nachweise.]
+  Compiler, echte HTTP-Abrufe, kontrollierte Fehlerantworten und
+  CSV-Abgleiche prüften unter anderem Tagesgrenzen, Aggregation,
+  fehlende Werte und Auswahlverknüpfungen. Codex führte diese automatisierten Prüfungen aus.
+  \item[Weitere Überarbeitung.]
+  Ergänzt wurden Profilsuche, Darstellungsmodi, vergrößerbare Jahrespanels,
+  begrenzte Rohwertcaches und die gebündelte Stationsübernahme.
+  Datenidentische Kalender- und Streudiagrammvergleiche vertieften die
+  Abwägung von Alternativen im Bericht.
+\end{description}
+
+\printbibliography
+\end{document}
